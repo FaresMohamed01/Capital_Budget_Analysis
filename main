@@ -1,0 +1,45 @@
+import pandas as pd
+import requests as req
+import json
+import matplotlib.pyplot as plt
+
+pd.set_option("display.max_columns", None)
+pd.set_option("display.max_rows", None)
+
+response = req.get("https://data.cityofnewyork.us/resource/46m8-77gv.json")
+data = response.json()
+df = pd.DataFrame(data)
+df.to_csv("data.csv", index=False)
+
+df = df.replace("[\$,]", "", regex=True)
+
+df["year1_amt"] = pd.to_numeric(df["year1_amt"])
+df["year2_amt"] = pd.to_numeric(df["year2_amt"])
+df["year3_amt"] = pd.to_numeric(df["year3_amt"])
+df["year4_amt"] = pd.to_numeric(df["year4_amt"])
+
+df = df.dropna(axis=0)
+
+df['sum_cols'] = df[['year1_amt', 'year2_amt', 'year3_amt', 'year4_amt']].sum(axis=1)
+
+df = df.groupby(["proj_type","budline","budline_title"]).agg({"sum_cols": "sum"}).reset_index()
+
+df= df.sort_values(by="sum_cols", ascending=False)
+
+print(df.head())
+print(df.tail())
+
+plt.figure(figsize=(25, 10))
+
+plt.xlabel("Agency")
+plt.ylabel("Total Amount (Billions)")
+plt.title("FY26-FY29 Capital Budget Per Agency")
+
+plt.xticks(x=df["proj_type"], rotation=0, ha='right')
+
+plt.tight_layout()
+
+plt.scatter(df["proj_type"], df["sum_cols"])
+plt.bar(df["proj_type"], df["sum_cols"])
+
+plt.show()
